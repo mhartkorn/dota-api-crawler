@@ -11,15 +11,15 @@ namespace dota_api_crawler
 {
     public class Program
     {
-        private const int CrawlWait = 2000;
+        private const int CrawlWaitTime = 1000;
         private const string DatabaseFileName = "database/database.sqlite";
         
         // Steam API key
-        private static string _apiKey = Environment.GetEnvironmentVariable("STEAM_API_KEY");
+        private static readonly string ApiKey = Environment.GetEnvironmentVariable("STEAM_API_KEY");
 
         private readonly HttpClient _client = new HttpClient();
 
-        static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             if (args.Length < 1)
             {
@@ -58,13 +58,12 @@ namespace dota_api_crawler
             };
             
             // TODO: Check existence of matches table directly when System.Data.Sqlite supports .NET Core
-            var createDatabase = !File.Exists(DatabaseFileName);
 
             using (var conn = new SqliteConnection(connectionParameters.ToString()))
             {
                 var openSqlite = conn.OpenAsync();
 
-                if (createDatabase)
+                if (!File.Exists(DatabaseFileName))
                 {
                     using (var transaction = conn.BeginTransaction())
                     {
@@ -91,7 +90,7 @@ namespace dota_api_crawler
 
                     var response = await _client.GetAsync(
                         $"https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v1" +
-                        $"?key={_apiKey}&match_id={matchId}");
+                        $"?key={ApiKey}&match_id={matchId}");
 
                     var readBody = response.Content.ReadAsStringAsync();
 
@@ -148,7 +147,7 @@ namespace dota_api_crawler
                         }
                     }
 
-                    await Task.Delay(CrawlWait);
+                    await Task.Delay(CrawlWaitTime);
                 }
             }
         }

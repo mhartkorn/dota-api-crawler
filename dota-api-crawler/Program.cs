@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -13,7 +14,7 @@ namespace dota_api_crawler
     {
         private const int CrawlWaitTime = 1000;
         private const string DatabaseFileName = "database/database.sqlite";
-        
+
         // Steam API key
         private static readonly string ApiKey = Environment.GetEnvironmentVariable("STEAM_API_KEY");
 
@@ -56,7 +57,7 @@ namespace dota_api_crawler
                 DataSource = DatabaseFileName,
                 Mode = SqliteOpenMode.ReadWriteCreate,
             };
-            
+
             // TODO: Check existence of matches table directly when System.Data.Sqlite supports .NET Core
 
             using (var conn = new SqliteConnection(connectionParameters.ToString()))
@@ -92,9 +93,20 @@ namespace dota_api_crawler
                         $"https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v1" +
                         $"?key={ApiKey}&match_id={matchId}");
 
-                    var readBody = response.Content.ReadAsStringAsync();
-
                     Console.WriteLine($"(HTTP status {response.StatusCode})");
+
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        // Wait if HTTP is not okay and retry
+                        await Task.Delay(TimeSpan.FromSeconds(30));
+
+                        // Increment matchId to re-run current step
+                        matchId++;
+
+                        continue;
+                    }
+
+                    var readBody = response.Content.ReadAsStringAsync();
 
                     using (var transaction = conn.BeginTransaction())
                     {

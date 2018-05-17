@@ -89,9 +89,23 @@ namespace dota_api_crawler
                 {
                     Console.Write($"Getting match {matchId}: ");
 
-                    var response = await _client.GetAsync(
-                        $"https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v1" +
-                        $"?key={ApiKey}&match_id={matchId}");
+                    HttpResponseMessage response;
+                    try
+                    {
+                        response = await _client.GetAsync(
+                            $"https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v1" +
+                            $"?key={ApiKey}&match_id={matchId}");
+                    }
+                    catch
+                    {
+                        // Wait if HTTP is not okay and retry
+                        await Task.Delay(TimeSpan.FromSeconds(30));
+
+                        // Increment matchId to re-run current step
+                        matchId++;
+                        
+                        continue;
+                    }
 
                     Console.WriteLine($"(HTTP status {response.StatusCode})");
 

@@ -3,5 +3,7 @@ CREATE TABLE "matches" (
 	`httpStatusCode` INTEGER NOT NULL,
 	`errorMessage` TEXT DEFAULT NULL,
 	`rawJson` TEXT NOT NULL,
+	`private` INTEGER,
+	`notFound` INTEGER,
 	PRIMARY KEY(`matchId`)
 );

@@ -127,9 +127,9 @@ namespace dota_api_crawler
                         var insertCommand = conn.CreateCommand();
                         insertCommand.Transaction = transaction;
                         insertCommand.CommandText = "INSERT INTO matches " +
-                                                    "( matchId, httpStatusCode, errorMessage, rawJson ) " +
+                                                    "(matchId, httpStatusCode, errorMessage, rawJson, private, notFound) " +
                                                     "VALUES " +
-                                                    "( $matchId, $httpStatusCode, $errorMessage, $rawJson )";
+                                                    "($matchId, $httpStatusCode, $errorMessage, $rawJson, $private, $notFound)";
                         insertCommand.Parameters.AddWithValue("$matchId", matchId);
                         insertCommand.Parameters.AddWithValue("$httpStatusCode", response.StatusCode);
 
@@ -145,15 +145,39 @@ namespace dota_api_crawler
                             errorMessage = "Invalid JSON";
                         }
 
-                        // var repalcedJson = json.Replace("\n", "");
-                        // Console.WriteLine(repalcedJson.Substring(0, Math.Min(200, repalcedJson.Length)));
-
-                        if (errorMessage != null)
-                            insertCommand.Parameters.AddWithValue("$errorMessage", errorMessage);
-                        else
+                        var inlinedJson = json.Replace("\n", "");
+                        
+                        if (errorMessage == null)
+                        {
                             insertCommand.Parameters.AddWithValue("$errorMessage", DBNull.Value);
+                            insertCommand.Parameters.AddWithValue("$rawJson", inlinedJson);
+                            insertCommand.Parameters.AddWithValue("$private", false);
+                            insertCommand.Parameters.AddWithValue("$notFound", false);
+                        }
+                        else
+                        {
+                            insertCommand.Parameters.AddWithValue("$rawJson", inlinedJson);
 
-                        insertCommand.Parameters.AddWithValue("$rawJson", json);
+                            switch (errorMessage)
+                            {
+                                case "Match ID not found":
+                                    insertCommand.Parameters.AddWithValue("$errorMessage", DBNull.Value);
+                                    insertCommand.Parameters.AddWithValue("$private", false);
+                                    insertCommand.Parameters.AddWithValue("$notFound", true);
+                                    break;
+                                case "Practice matches are not available via GetMatchDetails":
+                                    insertCommand.Parameters.AddWithValue("$errorMessage", DBNull.Value);
+                                    insertCommand.Parameters.AddWithValue("$private", true);
+                                    insertCommand.Parameters.AddWithValue("$notFound", false);
+                                    break;
+                                default:
+                                    insertCommand.Parameters.AddWithValue("$errorMessage", errorMessage);
+                                    insertCommand.Parameters.AddWithValue("$private", false);
+                                    insertCommand.Parameters.AddWithValue("$notFound", false);
+                                    break;
+                            }
+                        }
+                        
                         insertCommand.ExecuteNonQuery();
 
                         try
